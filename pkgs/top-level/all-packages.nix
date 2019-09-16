@@ -24715,7 +24715,9 @@ in
 
   zimg = callPackage ../development/libraries/zimg { };
 
-  wtf = callPackage ../applications/misc/wtf { };
+  wtf = callPackage ../applications/misc/wtf {
+    buildGoModule = buildGo112Module;
+  };
 
   zk-shell = callPackage ../applications/misc/zk-shell { };
 
