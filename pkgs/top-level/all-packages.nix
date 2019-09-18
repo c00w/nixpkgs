@@ -159,7 +159,9 @@ in
 
   cm256cc = callPackage ../development/libraries/cm256cc {  };
 
-  conftest = callPackage ../development/tools/conftest {};
+  conftest = callPackage ../development/tools/conftest {
+    buildGoModule = buildGo112Module;
+  };
 
   corgi = callPackage ../development/tools/corgi { };
 
@@ -15452,7 +15454,9 @@ in
 
   cpustat = callPackage ../os-specific/linux/cpustat { };
 
-  cockroachdb = callPackage ../servers/sql/cockroachdb { };
+  cockroachdb = callPackage ../servers/sql/cockroachdb {
+    buildGoPackage = buildGo112Package;
+  };
 
   conky = callPackage ../os-specific/linux/conky ({
     lua = lua5_3_compat;
