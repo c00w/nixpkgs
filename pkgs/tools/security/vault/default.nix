@@ -11,7 +11,7 @@ buildGoModule rec {
     sha256 = "11zi12j09vi6j112a1n8f7sxwp15pbh0801bzh27ihcy01hlzdf8";
   };
 
-  modSha256 = "10pr3piv6hrsc562qagpn1h5wckiziyfqraj13172hdglz3n2i7q";
+  modSha256 = "0bcmbbdmjiq66jfm28pc43hbdshg8plkrwwxbr426sir1gpjlgi8";
 
   buildFlagsArray = [
     "-tags='vault'"
