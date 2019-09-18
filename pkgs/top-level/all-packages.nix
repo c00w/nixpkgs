@@ -19341,7 +19341,9 @@ in
 
   marp = callPackage ../applications/office/marp { };
 
-  magnetico = callPackage ../applications/networking/p2p/magnetico { };
+  magnetico = callPackage ../applications/networking/p2p/magnetico {
+    buildGoModule = buildGo112Module;
+  };
 
   matchbox = callPackage ../applications/window-managers/matchbox { };
 
