@@ -19619,7 +19619,9 @@ in
 
   notion = callPackage ../applications/window-managers/notion { };
 
-  openshift = callPackage ../applications/networking/cluster/openshift { };
+  openshift = callPackage ../applications/networking/cluster/openshift {
+    buildGoPackage = buildGo112Package;
+  };
 
   oroborus = callPackage ../applications/window-managers/oroborus {};
 
