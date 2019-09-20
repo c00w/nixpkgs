@@ -159,7 +159,10 @@ in
 
   cm256cc = callPackage ../development/libraries/cm256cc {  };
 
-  conftest = callPackage ../development/tools/conftest {};
+  conftest = callPackage ../development/tools/conftest {
+    # Version 0.12.0 has an inconsistent module hash in 1.13 due to some data being fetched:
+    buildGoModule = buildGo112Module;
+  };
 
   corgi = callPackage ../development/tools/corgi { };
 
