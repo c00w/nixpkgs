@@ -11,7 +11,7 @@ buildGoModule rec {
     sha256 = "0blrbbnvnnxyw0idhglqdz16i7g6g86a6kw2iw707bg0yfdl1ncq";
   };
 
-  modSha256 = "023j34yjgp3asysrjbls86nvhf51d1n86ll3db493rsivlcm0m5q";
+  modSha256 = "11999ywy73ng45gl1qypky8342jvishcp11bdxbigvqhwl2zbpav";
 
   patches = [
     # Version 0.12.0 does not build with go 1.13. See https://github.com/instrumenta/conftest/pull/85.
