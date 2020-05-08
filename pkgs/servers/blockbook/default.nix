@@ -18,6 +18,8 @@ buildGoPackage rec {
 
   goPackagePath = "blockbook";
 
+  patches = [ ./114.patch ];
+
   src = fetchFromGitHub {
     owner = "trezor";
     repo = "blockbook";

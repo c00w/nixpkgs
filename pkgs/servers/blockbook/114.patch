@@ -1,0 +1,431 @@
+diff --git a/api/types.go b/api/types.go
+index 0b97ae4..f925e8f 100644
+--- a/api/types.go
++++ b/api/types.go
+@@ -368,19 +368,19 @@ type Blocks struct {
+ 
+ // BlockInfo contains extended block header data and a list of block txids
+ type BlockInfo struct {
+-	Hash          string      `json:"hash"`
+-	Prev          string      `json:"previousBlockHash,omitempty"`
+-	Next          string      `json:"nextBlockHash,omitempty"`
+-	Height        uint32      `json:"height"`
+-	Confirmations int         `json:"confirmations"`
+-	Size          int         `json:"size"`
+-	Time          int64       `json:"time,omitempty"`
+-	Version       json.Number `json:"version"`
+-	MerkleRoot    string      `json:"merkleRoot"`
+-	Nonce         string      `json:"nonce"`
+-	Bits          string      `json:"bits"`
+-	Difficulty    string      `json:"difficulty"`
+-	Txids         []string    `json:"tx,omitempty"`
++	Hash          string             `json:"hash"`
++	Prev          string             `json:"previousBlockHash,omitempty"`
++	Next          string             `json:"nextBlockHash,omitempty"`
++	Height        uint32             `json:"height"`
++	Confirmations int                `json:"confirmations"`
++	Size          int                `json:"size"`
++	Time          int64              `json:"time,omitempty"`
++	Version       bchain.ChillNumber `json:"version"`
++	MerkleRoot    string             `json:"merkleRoot"`
++	Nonce         string             `json:"nonce"`
++	Bits          string             `json:"bits"`
++	Difficulty    string             `json:"difficulty"`
++	Txids         []string           `json:"tx,omitempty"`
+ }
+ 
+ // Block contains information about block
+diff --git a/bchain/baseparser.go b/bchain/baseparser.go
+index d3596b8..bd7c1c8 100644
+--- a/bchain/baseparser.go
++++ b/bchain/baseparser.go
+@@ -4,6 +4,7 @@ import (
+ 	"encoding/hex"
+ 	"encoding/json"
+ 	"math/big"
++	"strconv"
+ 	"strings"
+ 
+ 	"github.com/gogo/protobuf/proto"
+@@ -11,6 +12,43 @@ import (
+ 	"github.com/juju/errors"
+ )
+ 
++type ChillNumber string
++
++func (c ChillNumber) Float64() (float64, error) {
++	f, err := strconv.ParseFloat(string(c), 64)
++	if err != nil {
++		return 0, nil
++	}
++	return f, nil
++}
++
++func (c ChillNumber) Int64() (int64, error) {
++	i, err := strconv.ParseInt(string(c), 10, 64)
++	if err != nil {
++		return 0, nil
++	}
++	return i, nil
++}
++
++func (c ChillNumber) String() string {
++	return string(c)
++}
++
++func (c ChillNumber) MarshalJSON() ([]byte, error) {
++	f, _ := c.Float64()
++	return json.Marshal(f)
++}
++
++func (c *ChillNumber) UnmarshalJSON(d []byte) error {
++	if json.Unmarshal(d, c) == nil {
++		return nil
++	}
++
++	// If it's not a string, it's something which converts to a number.
++	*c = ChillNumber(string(d))
++	return nil
++}
++
+ // BaseParser implements data parsing/handling functionality base for all other parsers
+ type BaseParser struct {
+ 	BlockAddressesToKeep int
+@@ -39,9 +77,9 @@ func (p *BaseParser) GetAddrDescForUnknownInput(tx *Tx, input int) AddressDescri
+ 
+ const zeros = "0000000000000000000000000000000000000000"
+ 
+-// AmountToBigInt converts amount in json.Number (string) to big.Int
++// AmountToBigInt converts amount in ChillNumber (string) to big.Int
+ // it uses string operations to avoid problems with rounding
+-func (p *BaseParser) AmountToBigInt(n json.Number) (big.Int, error) {
++func (p *BaseParser) AmountToBigInt(n ChillNumber) (big.Int, error) {
+ 	var r big.Int
+ 	s := string(n)
+ 	i := strings.IndexByte(s, '.')
+diff --git a/bchain/baseparser_test.go b/bchain/baseparser_test.go
+index 668ed26..a34c63a 100644
+--- a/bchain/baseparser_test.go
++++ b/bchain/baseparser_test.go
+@@ -1,7 +1,6 @@
+ package bchain
+ 
+ import (
+-	"encoding/json"
+ 	"math/big"
+ 	"testing"
+ )
+@@ -44,7 +43,7 @@ func TestBaseParser_AmountToDecimalString(t *testing.T) {
+ func TestBaseParser_AmountToBigInt(t *testing.T) {
+ 	for _, tt := range amounts {
+ 		t.Run(tt.s, func(t *testing.T) {
+-			got, err := NewBaseParser(tt.adp).AmountToBigInt(json.Number(tt.s))
++			got, err := NewBaseParser(tt.adp).AmountToBigInt(ChillNumber(tt.s))
+ 			if err != nil {
+ 				t.Errorf("BaseParser.AmountToBigInt() error = %v", err)
+ 				return
+diff --git a/bchain/coins/btc/bitcoinrpc.go b/bchain/coins/btc/bitcoinrpc.go
+index 2a66cb2..54d91f7 100644
+--- a/bchain/coins/btc/bitcoinrpc.go
++++ b/bchain/coins/btc/bitcoinrpc.go
+@@ -237,13 +237,13 @@ type CmdGetBlockChainInfo struct {
+ type ResGetBlockChainInfo struct {
+ 	Error  *bchain.RPCError `json:"error"`
+ 	Result struct {
+-		Chain         string      `json:"chain"`
+-		Blocks        int         `json:"blocks"`
+-		Headers       int         `json:"headers"`
+-		Bestblockhash string      `json:"bestblockhash"`
+-		Difficulty    json.Number `json:"difficulty"`
+-		SizeOnDisk    int64       `json:"size_on_disk"`
+-		Warnings      string      `json:"warnings"`
++		Chain         string             `json:"chain"`
++		Blocks        int                `json:"blocks"`
++		Headers       int                `json:"headers"`
++		Bestblockhash string             `json:"bestblockhash"`
++		Difficulty    bchain.ChillNumber `json:"difficulty"`
++		SizeOnDisk    int64              `json:"size_on_disk"`
++		Warnings      string             `json:"warnings"`
+ 	} `json:"result"`
+ }
+ 
+@@ -256,11 +256,11 @@ type CmdGetNetworkInfo struct {
+ type ResGetNetworkInfo struct {
+ 	Error  *bchain.RPCError `json:"error"`
+ 	Result struct {
+-		Version         json.Number `json:"version"`
+-		Subversion      json.Number `json:"subversion"`
+-		ProtocolVersion json.Number `json:"protocolversion"`
+-		Timeoffset      float64     `json:"timeoffset"`
+-		Warnings        string      `json:"warnings"`
++		Version         bchain.ChillNumber `json:"version"`
++		Subversion      bchain.ChillNumber `json:"subversion"`
++		ProtocolVersion bchain.ChillNumber `json:"protocolversion"`
++		Timeoffset      float64            `json:"timeoffset"`
++		Warnings        string             `json:"warnings"`
+ 	} `json:"result"`
+ }
+ 
+@@ -358,8 +358,8 @@ type CmdEstimateSmartFee struct {
+ type ResEstimateSmartFee struct {
+ 	Error  *bchain.RPCError `json:"error"`
+ 	Result struct {
+-		Feerate json.Number `json:"feerate"`
+-		Blocks  int         `json:"blocks"`
++		Feerate bchain.ChillNumber `json:"feerate"`
++		Blocks  int                `json:"blocks"`
+ 	} `json:"result"`
+ }
+ 
+@@ -373,8 +373,8 @@ type CmdEstimateFee struct {
+ }
+ 
+ type ResEstimateFee struct {
+-	Error  *bchain.RPCError `json:"error"`
+-	Result json.Number      `json:"result"`
++	Error  *bchain.RPCError   `json:"error"`
++	Result bchain.ChillNumber `json:"result"`
+ }
+ 
+ // sendrawtransaction
+diff --git a/bchain/coins/dcr/decredrpc.go b/bchain/coins/dcr/decredrpc.go
+index 1f93a69..7652393 100644
+--- a/bchain/coins/dcr/decredrpc.go
++++ b/bchain/coins/dcr/decredrpc.go
+@@ -168,61 +168,61 @@ type GetBlockHashResult struct {
+ type GetBlockResult struct {
+ 	Error  Error `json:"error"`
+ 	Result struct {
+-		Hash          string      `json:"hash"`
+-		Confirmations int64       `json:"confirmations"`
+-		Size          int32       `json:"size"`
+-		Height        uint32      `json:"height"`
+-		Version       json.Number `json:"version"`
+-		MerkleRoot    string      `json:"merkleroot"`
+-		StakeRoot     string      `json:"stakeroot"`
+-		RawTx         []RawTx     `json:"rawtx"`
+-		Tx            []string    `json:"tx,omitempty"`
+-		STx           []string    `json:"stx,omitempty"`
+-		Time          int64       `json:"time"`
+-		Nonce         json.Number `json:"nonce"`
+-		VoteBits      uint16      `json:"votebits"`
+-		FinalState    string      `json:"finalstate"`
+-		Voters        uint16      `json:"voters"`
+-		FreshStake    uint8       `json:"freshstake"`
+-		Revocations   uint8       `json:"revocations"`
+-		PoolSize      uint32      `json:"poolsize"`
+-		Bits          string      `json:"bits"`
+-		SBits         float64     `json:"sbits"`
+-		ExtraData     string      `json:"extradata"`
+-		StakeVersion  uint32      `json:"stakeversion"`
+-		Difficulty    float64     `json:"difficulty"`
+-		ChainWork     string      `json:"chainwork"`
+-		PreviousHash  string      `json:"previousblockhash"`
+-		NextHash      string      `json:"nextblockhash,omitempty"`
++		Hash          string             `json:"hash"`
++		Confirmations int64              `json:"confirmations"`
++		Size          int32              `json:"size"`
++		Height        uint32             `json:"height"`
++		Version       bchain.ChillNumber `json:"version"`
++		MerkleRoot    string             `json:"merkleroot"`
++		StakeRoot     string             `json:"stakeroot"`
++		RawTx         []RawTx            `json:"rawtx"`
++		Tx            []string           `json:"tx,omitempty"`
++		STx           []string           `json:"stx,omitempty"`
++		Time          int64              `json:"time"`
++		Nonce         bchain.ChillNumber `json:"nonce"`
++		VoteBits      uint16             `json:"votebits"`
++		FinalState    string             `json:"finalstate"`
++		Voters        uint16             `json:"voters"`
++		FreshStake    uint8              `json:"freshstake"`
++		Revocations   uint8              `json:"revocations"`
++		PoolSize      uint32             `json:"poolsize"`
++		Bits          string             `json:"bits"`
++		SBits         float64            `json:"sbits"`
++		ExtraData     string             `json:"extradata"`
++		StakeVersion  uint32             `json:"stakeversion"`
++		Difficulty    float64            `json:"difficulty"`
++		ChainWork     string             `json:"chainwork"`
++		PreviousHash  string             `json:"previousblockhash"`
++		NextHash      string             `json:"nextblockhash,omitempty"`
+ 	} `json:"result"`
+ }
+ 
+ type GetBlockHeaderResult struct {
+ 	Error  Error `json:"error"`
+ 	Result struct {
+-		Hash          string      `json:"hash"`
+-		Confirmations int64       `json:"confirmations"`
+-		Version       json.Number `json:"version"`
+-		MerkleRoot    string      `json:"merkleroot"`
+-		StakeRoot     string      `json:"stakeroot"`
+-		VoteBits      uint16      `json:"votebits"`
+-		FinalState    string      `json:"finalstate"`
+-		Voters        uint16      `json:"voters"`
+-		FreshStake    uint8       `json:"freshstake"`
+-		Revocations   uint8       `json:"revocations"`
+-		PoolSize      uint32      `json:"poolsize"`
+-		Bits          string      `json:"bits"`
+-		SBits         float64     `json:"sbits"`
+-		Height        uint32      `json:"height"`
+-		Size          uint32      `json:"size"`
+-		Time          int64       `json:"time"`
+-		Nonce         uint32      `json:"nonce"`
+-		ExtraData     string      `json:"extradata"`
+-		StakeVersion  uint32      `json:"stakeversion"`
+-		Difficulty    float64     `json:"difficulty"`
+-		ChainWork     string      `json:"chainwork"`
+-		PreviousHash  string      `json:"previousblockhash,omitempty"`
+-		NextHash      string      `json:"nextblockhash,omitempty"`
++		Hash          string             `json:"hash"`
++		Confirmations int64              `json:"confirmations"`
++		Version       bchain.ChillNumber `json:"version"`
++		MerkleRoot    string             `json:"merkleroot"`
++		StakeRoot     string             `json:"stakeroot"`
++		VoteBits      uint16             `json:"votebits"`
++		FinalState    string             `json:"finalstate"`
++		Voters        uint16             `json:"voters"`
++		FreshStake    uint8              `json:"freshstake"`
++		Revocations   uint8              `json:"revocations"`
++		PoolSize      uint32             `json:"poolsize"`
++		Bits          string             `json:"bits"`
++		SBits         float64            `json:"sbits"`
++		Height        uint32             `json:"height"`
++		Size          uint32             `json:"size"`
++		Time          int64              `json:"time"`
++		Nonce         uint32             `json:"nonce"`
++		ExtraData     string             `json:"extradata"`
++		StakeVersion  uint32             `json:"stakeversion"`
++		Difficulty    float64            `json:"difficulty"`
++		ChainWork     string             `json:"chainwork"`
++		PreviousHash  string             `json:"previousblockhash,omitempty"`
++		NextHash      string             `json:"nextblockhash,omitempty"`
+ 	} `json:"result"`
+ }
+ 
+@@ -297,8 +297,8 @@ type EstimateSmartFeeResult struct {
+ }
+ 
+ type EstimateFeeResult struct {
+-	Error  Error       `json:"error"`
+-	Result json.Number `json:"result"`
++	Error  Error              `json:"error"`
++	Result bchain.ChillNumber `json:"result"`
+ }
+ 
+ type SendRawTransactionResult struct {
+@@ -637,7 +637,7 @@ func (d *DecredRPC) GetBlockInfo(hash string) (*bchain.BlockInfo, error) {
+ 		Version:     block.Result.Version,
+ 		Nonce:       block.Result.Nonce,
+ 		Bits:        block.Result.Bits,
+-		Difficulty:  json.Number(strconv.FormatFloat(block.Result.Difficulty, 'e', -1, 64)),
++		Difficulty:  bchain.ChillNumber(strconv.FormatFloat(block.Result.Difficulty, 'e', -1, 64)),
+ 		Txids:       block.Result.Tx,
+ 	}
+ 
+diff --git a/bchain/coins/eth/ethrpc.go b/bchain/coins/eth/ethrpc.go
+index d464b8a..ad14ae9 100644
+--- a/bchain/coins/eth/ethrpc.go
++++ b/bchain/coins/eth/ethrpc.go
+@@ -569,8 +569,8 @@ func (b *EthereumRPC) GetBlockInfo(hash string) (*bchain.BlockInfo, error) {
+ 	}
+ 	return &bchain.BlockInfo{
+ 		BlockHeader: *bch,
+-		Difficulty:  json.Number(head.Difficulty),
+-		Nonce:       json.Number(head.Nonce),
++		Difficulty:  bchain.ChillNumber(head.Difficulty),
++		Nonce:       bchain.ChillNumber(head.Nonce),
+ 		Txids:       txs.Transactions,
+ 	}, nil
+ }
+diff --git a/bchain/coins/nuls/nulsparser_test.go b/bchain/coins/nuls/nulsparser_test.go
+index e09948c..e536957 100644
+--- a/bchain/coins/nuls/nulsparser_test.go
++++ b/bchain/coins/nuls/nulsparser_test.go
+@@ -4,7 +4,6 @@ import (
+ 	"blockbook/bchain"
+ 	"blockbook/bchain/coins/btc"
+ 	"encoding/hex"
+-	"encoding/json"
+ 	"math/big"
+ 	"reflect"
+ 	"testing"
+@@ -41,7 +40,7 @@ func init() {
+ 			{
+ 				ValueSat:  *big.NewInt(399999000000),
+ 				N:         0,
+-				JsonValue: json.Number("0"),
++				JsonValue: bchain.ChillNumber("0"),
+ 				ScriptPubKey: bchain.ScriptPubKey{
+ 					Hex: "Nse4zpZHsUuU7h5ymv28pcGbwHju3joV",
+ 					Addresses: []string{
+@@ -73,7 +72,7 @@ func init() {
+ 			{
+ 				ValueSat:  *big.NewInt(400000000000),
+ 				N:         0,
+-				JsonValue: json.Number("0"),
++				JsonValue: bchain.ChillNumber("0"),
+ 				ScriptPubKey: bchain.ScriptPubKey{
+ 					Hex: "Nse4ikjE88g2BgsNwsswTdkSwiSrKjjS",
+ 					Addresses: []string{
+@@ -84,7 +83,7 @@ func init() {
+ 			{
+ 				ValueSat:  *big.NewInt(7286565570000),
+ 				N:         1,
+-				JsonValue: json.Number("0"),
++				JsonValue: bchain.ChillNumber("0"),
+ 				ScriptPubKey: bchain.ScriptPubKey{
+ 					Hex: "Nse119z2oSDJYkFkxmwYDiYtPfBeNkqi",
+ 					Addresses: []string{
+diff --git a/bchain/types.go b/bchain/types.go
+index 05523bf..6e45bf4 100644
+--- a/bchain/types.go
++++ b/bchain/types.go
+@@ -68,7 +68,7 @@ type ScriptPubKey struct {
+ // Vout contains data about tx output
+ type Vout struct {
+ 	ValueSat     big.Int
+-	JsonValue    json.Number  `json:"value"`
++	JsonValue    ChillNumber  `json:"value"`
+ 	N            uint32       `json:"n"`
+ 	ScriptPubKey ScriptPubKey `json:"scriptPubKey"`
+ }
+@@ -110,11 +110,11 @@ type BlockHeader struct {
+ // BlockInfo contains extended block header data and a list of block txids
+ type BlockInfo struct {
+ 	BlockHeader
+-	Version    json.Number `json:"version"`
++	Version    ChillNumber `json:"version"`
+ 	MerkleRoot string      `json:"merkleroot"`
+-	Nonce      json.Number `json:"nonce"`
++	Nonce      ChillNumber `json:"nonce"`
+ 	Bits       string      `json:"bits"`
+-	Difficulty json.Number `json:"difficulty"`
++	Difficulty ChillNumber `json:"difficulty"`
+ 	Txids      []string    `json:"tx,omitempty"`
+ }
+ 
+@@ -122,9 +122,9 @@ type BlockInfo struct {
+ type MempoolEntry struct {
+ 	Size            uint32 `json:"size"`
+ 	FeeSat          big.Int
+-	Fee             json.Number `json:"fee"`
++	Fee             ChillNumber `json:"fee"`
+ 	ModifiedFeeSat  big.Int
+-	ModifiedFee     json.Number `json:"modifiedfee"`
++	ModifiedFee     ChillNumber `json:"modifiedfee"`
+ 	Time            uint64      `json:"time"`
+ 	Height          uint32      `json:"height"`
+ 	DescendantCount uint32      `json:"descendantcount"`
+@@ -267,9 +267,9 @@ type BlockChainParser interface {
+ 	MinimumCoinbaseConfirmations() int
+ 	// AmountToDecimalString converts amount in big.Int to string with decimal point in the correct place
+ 	AmountToDecimalString(a *big.Int) string
+-	// AmountToBigInt converts amount in json.Number (string) to big.Int
++	// AmountToBigInt converts amount in ChillNumber (string) to big.Int
+ 	// it uses string operations to avoid problems with rounding
+-	AmountToBigInt(n json.Number) (big.Int, error)
++	AmountToBigInt(n ChillNumber) (big.Int, error)
+ 	// address descriptor conversions
+ 	GetAddrDescFromVout(output *Vout) (AddressDescriptor, error)
+ 	GetAddrDescFromAddress(address string) (AddressDescriptor, error)
